@@ -1,0 +1,341 @@
+#!/bin/sh
+
+  #=================================================================================#
+  #                      Code2tags Project   					    #
+  #  										    #
+  # ========================================================================	    #
+  # 										    #
+  #  Copyright (C) 2006 Daniel Diaz. All rights reserved.       		    #
+  # 										    #
+  #  This file may be distributed and/or modified under the terms of the	    #
+  #  GNU General Public License version as published by the Free	            #
+  #  Software Foundation                                         		    #
+  # 										    #
+  # 										    #
+  #  This software is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING	    #
+  #  THE WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR	    #
+  #  PURPOSE. See the GNU  General Public License for more details.	            #
+  # 										    #
+  #  appserver1 (at) yahoo.com 							    #
+  #  http://www.mexgrp.com/code2tags						    #
+  # 										    #
+  # 										    #
+  # ========================================================================	    #
+  #=================================================================================#
+
+
+#====================================================================
+#Change this line if you want to add more code extensions to document i.e. cs (add it at the end)
+#====================================================================
+
+declare -a PROCFILES=(asp cpp jsp java xml properties tld dtd sql sh php js pl cgi c h css )
+
+
+#====================================================================
+#dont change anything below unless you know how
+#====================================================================
+
+PWD=$(pwd)
+FIND=$(which find)
+VIM=$(which vim)
+
+DOCDIR="codedoc"
+USAGE="\n USAGE: code2tags [-h] [-o arg] [-s]"
+REGEX=""
+FILES=""
+
+function displayHelp() {
+    cat <<EOF            
+#====================#
+# |_  _ |._  	     #
+# | |(/_||_) 	     #
+#        |   	     #
+#====================#
+code2tags is a documenting tool it generates a html folder with the
+same hierarchy of the project you are documenting named "codedoc" 
+it must be run from inside your source dir so it can find every
+source file under it.
+
+code2tags can handle many code formats and is easily extended 
+included are all xml, properties, jsp... and more. 
+
+the output dir will contain a file index.html wich must be opened
+to see al project documented in html format.
+
+Options:
+-o you can specify any  output folder name with the -o flag  
+-s it will output wich file is processing unless you use the -s flag
+-h display this help 
+
+Copyright 2006 Daniel Diaz 
+
+appserver1 at yahoo.com
+
+EOF
+}
+
+
+function doFilesRegex() {
+    for  ((i=1; i <= ${#PROCFILES[@]} ; i++))  do
+    
+    if [ $i -lt ${#PROCFILES[@] }  ]; then
+	REGEX=$REGEX".*\."${PROCFILES[$i]}"\|"    
+    else
+	REGEX=$REGEX".*\."${#PROCFILES[$i]}
+    fi
+    
+    done
+    echo $REGEX 
+}
+
+
+function filetoHtml() {
+    local VIMFILE="$1"   
+    
+    vim -n  -c ':syn on' -c 'set nu' --cmd "colorscheme  koehler" -c ':TOhtml' -c ':wqa' $VIMFILE &> /dev/null &
+    trap "kill -TERM $!; exit 1" 2  
+    wait $!
+    
+}
+
+function makeList()
+{
+    local ELEMENT  
+    local LINKS
+#cd $DOCDIR
+    PWD=$(pwd)
+    for ELEMENT  in $PWD/.??* $PWD/*
+      do
+      if [ -d $ELEMENT ]; 
+	  then
+	  LINKS=$LINKS"<ul>${ELEMENT##*/} >\n"
+	  
+	  if [ -x $ELEMENT ];
+	      then
+	      
+	      makeList $ELEMENT 
+	      LINKS=$LINKS"</ul>\n" 
+	  fi
+      elif [ -e $ELEMENT ]; then
+	  LINKS=$LINKS"<li><a href=\"${ELEMENT#*/}\" title=\"$ELEMENT\" target=\"right\">${ELEMENT##*/}</a></li>\n"
+      fi
+    done
+    
+    echo -e $LINKS
+}
+
+
+function makeNavFrame() {
+    local FILES_ARRAY
+    local LINKS
+    FILES_ARRAY=( `echo "$1"` )
+    
+    FILES_ARRAY_REG=( "${FILES_ARRAY[@]##.*\/}" )
+    
+    
+    for  ((i=0; i < ${#FILES_ARRAY[@]} ; i++))  do
+    local FILENAME=${FILES_ARRAY_REG[$i]}  
+    local HREF=${FILES_ARRAY[$i]}
+    LINKS=$LINKS"<tr><td><a href=\"$HREF".html"\" title=\"$HREF\" target=\"right\">$FILENAME</a></td></tr>"
+    
+    done
+    
+    cat <<EOF > $DOCDIR/welcome.html
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Project Documentation</title>
+<meta name="generator" content="code2tags">
+</head>
+<body>
+<center><table>
+<tr>
+<td>
+<pre>
+<h1>Project Documentation</h1>
+</pre>
+</td>
+</tr>
+</table></center>
+</body>
+</html>
+
+EOF
+    
+    cat <<EOF > $DOCDIR/index.html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Project Documentation</title>
+<meta name="generator" content="code2tags">
+</head>
+<frameset cols="15%,75%" frameborder="3" scrolling="auto">
+<frame src="menu.html" name="left" marginwidth="1" marginheight="1">
+<frame src="welcome.html" name="right">
+</frameset>
+</html>
+
+
+EOF
+}
+
+
+function dirStructure() {
+#copy dir struct
+    local FILES_ARRAY
+    FILES_ARRAY=( `echo "$1"` )
+    
+    find . -type f -regex $REGEX  -print | cpio -pmd $DOCDIR &> /dev/null
+    for  ((i=0; i < ${#FILES_ARRAY[@]} ; i++))  do
+    local ELEMENT=${FILES_ARRAY[$i]}  
+    if [ -z $SILENT ]; then
+	echo "documenting : "$ELEMENT	
+	
+	
+    fi
+    filetoHtml $ELEMENT            
+    
+    
+    mv $ELEMENT".html" $DOCDIR/$ELEMENT".html" 
+    done
+    
+}
+
+function doFilesCollection() {
+
+    
+    find . -type f -regex $1  -print    
+    
+    
+}
+function remDocsSrc() {
+    for SOURCE in $(find $DOCDIR -type f -print); do
+	
+	if [ "${SOURCE##*.}" != html ]; then
+	    rm -f $SOURCE
+	    
+	fi
+	
+    done
+}
+
+function main() {
+    
+    
+    while getopts shc:o: z;
+      do
+      case $z in
+	  s)  SILENT=1 
+	      echo "" ;;
+	  o)  DOCDIR="$OPTARG"
+	      echo "" ;;
+	  c)  echo "option c running" 
+	      echo ""  ;;
+	  h) displayHelp; exit -1;;
+	  ?)  echo -e $USAGE; exit -1;;
+      esac;
+    done
+    
+    
+    cat <<EOF
+#==========================================================#
+#  ____                    ____                    	   #
+# |  _ \  ___   ___ ___   / ___| ___ _ __          	   #
+# | | | |/ _ \ / __/ __| | |  _ / _ \ '_ \         	   #
+# | |_| | (_) | (__\__ \ | |_| |  __/ | | |  _ _ _ 	   #
+# |____/ \___/ \___|___/  \____|\___|_| |_| (_|_|_)	   #
+#                                                          #
+# Ctrl-c to stop                                           #
+#==========================================================#
+                                                
+
+EOF
+    rm -rf $DOCDIR
+    REGEX=$(doFilesRegex)
+    FILES=( $(doFilesCollection $REGEX) )
+    if [ -z $SILENT ]; then
+	echo "Number of files to document : "${#FILES[@]}    
+	
+	
+    fi
+    PACKFILES=$(echo ${FILES[@]})
+    
+    dirStructure "${PACKFILES[@]}"
+    makeNavFrame "${PACKFILES[@]}"
+    remDocsSrc
+    HTMTREE=$(${0%/*}/navcode $DOCDIR)
+    HTMTREE="${HTMTREE#<ul>}"
+    cat << EOF > $DOCDIR/menu.html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<style type="text/css">
+
+
+#menulist
+ {
+padding-left: 0;
+margin-left: 0;
+width: 200px;
+}
+
+/* ul#menulist
+{
+text-align: left;
+list-style-type: square;
+padding: 0;
+margin: 0 auto;
+ width: 40%; 
+}*/
+
+ #menucontainer ul
+{
+list-style-type: square;
+text-align: left;
+font: normal 8px "Arial", "Lucida Sans Unicode", verdana, lucida, sans-serif;
+text-decoration: none;
+align: left;
+}
+
+#menucontainer ul li a
+{
+
+padding-left: 0px;
+text-align: left;
+font: normal 8px "Arial", "Lucida Sans Unicode", verdana, lucida, sans-serif;
+text-decoration: none;
+color: #999;
+align: left;
+}
+
+ #menucontainer a:hover
+{
+color: blue;
+text-decoration: none;
+}
+
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-15">
+<title>Project Documentation</title>
+<meta name="generator" content="code2tags">
+</head>
+<body>
+<div id="menucontainer"> 
+<table>
+  <tr align=left>
+    <td align=left>
+<ul id="menulist"><ul id="menulist">$HTMTREE
+</ul>
+    </td>
+  </tr>
+</table>
+</div> 
+</body></html>
+
+EOF
+
+echo -e "Documentation completed..."   
+    
+}
+main $*

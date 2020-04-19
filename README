@@ -1,0 +1,31 @@
+               _      ____  _                  
+  ___ ___   __| | ___|___ \| |_ __ _  __ _ ___ 
+ / __/ _ \ / _` |/ _ \ __) | __/ _` |/ _` / __|
+| (_| (_) | (_| |  __// __/| || (_| | (_| \__ \
+ \___\___/ \__,_|\___|_____|\__\__,_|\__, |___/
+                                     |___/     
+
+
+code2tags is a documenting tool it generates a html folder with the
+same hierarchy of the project you are documenting named "codedoc" 
+it must be run from inside your source dir so it can find every
+source file under it.
+
+to view help
+
+./code2tags -h
+
+to run under bash 
+
+./code2tags
+
+code2tags can handle many code formats and is easily extended 
+included are : cpp jsp java xml properties tld dtd sql sh php js pl cgi c h css. 
+
+source code is commented to add more file types to document
+
+Copyright 2006 Daniel Diaz 
+
+appserver1 at yahoo.com
+
+Free software see LICENSE file for details

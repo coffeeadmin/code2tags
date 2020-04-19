@@ -1,0 +1,64 @@
+#!/bin/sh
+  #=================================================================================#
+  #                      Code2tags Project   					    #
+  #  										    #
+  # ========================================================================	    #
+  # 										    #
+  #  Copyright (C) 2006 Daniel Diaz. All rights reserved.       		    #
+  # 										    #
+  #  This file may be distributed and/or modified under the terms of the	    #
+  #  GNU General Public License version as published by the Free	            #
+  #  Software Foundation                                         		    #
+  # 										    #
+  # 										    #
+  #  This software is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING	    #
+  #  THE WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR	    #
+  #  PURPOSE. See the GNU  General Public License for more details.	            #
+  # 										    #
+  #  appserver1 (at) yahoo.com 							    #
+  #  http://www.mexgrp.com/code2tags 						    #
+  # 										    #
+  # 										    #
+  # ========================================================================	    #
+  #=================================================================================#
+
+
+doTree()
+{
+  
+    local ELEMENT
+    local FILENAME  
+ 
+    cd "$1"
+
+   for ELEMENT  in $PWD/.??* $PWD/*
+
+      do
+       
+      if [ -d $ELEMENT ]; 
+	  then
+	  echo -e "<ul>${ELEMENT##*/}\n"
+	 # echo -e "&not; \n"
+	  if [ -x $ELEMENT ];
+	      then
+	      
+	      doTree $ELEMENT 
+	      echo -e "</ul>\n" 
+	  fi
+      elif [[ -e $ELEMENT && $ELEMENT != *index.html && $ELEMENT != *welcome.html && $ELEMENT != *menu.html && $ELEMENT = *.html ]]  ; then
+	  FILENAME="${ELEMENT##*/}" 
+          
+	  FILENAME="${FILENAME%.html}"
+          
+	  echo -e "<li><a href=\"${ELEMENT#$DOCROOT}\" title=\"${ELEMENT#$DOCROOT}\" target=\"right\">$FILENAME</a></li>\n"
+      fi
+    done
+    
+}
+
+
+CURRENT=${1:-.}
+DOCROOT="$PWD/$1/"
+
+doTree $CURRENT $DOCROOT
+-
